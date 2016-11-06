@@ -80,8 +80,8 @@ fn execute() -> i32 {
 
 fn print_usage(opts: &Options, reason: &str) {
     let msg = format!("{}\nusage: cargo fmt [options]", reason);
-    println!("{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \
-              Arguments after `--` are passed to rustfmt.",
+    println!("{}\nThis utility formats all bin, lib and test files of the current crate using \
+              rustfmt. Arguments after `--` are passed to rustfmt.",
              opts.usage(&msg));
 }
 
@@ -95,9 +95,9 @@ pub enum Verbosity {
 fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
     let targets = try!(get_targets());
 
-    // Currently only bin and lib files get formatted
+    // Currently only bin, lib and test files get formatted
     let files: Vec<_> = targets.into_iter()
-        .filter(|t| t.kind.is_lib() | t.kind.is_bin())
+        .filter(|t| t.kind.is_lib() | t.kind.is_bin() | t.kind.is_test())
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
                 println!("[{:?}] {:?}", t.kind, t.path)
@@ -118,7 +118,8 @@ fn get_fmt_args() -> Vec<String> {
 enum TargetKind {
     Lib, // dylib, staticlib, lib
     Bin, // bin
-    Other, // test, plugin,...
+    Test, // test
+    Other, // plugin,...
 }
 
 impl TargetKind {
@@ -132,6 +133,13 @@ impl TargetKind {
     fn is_bin(&self) -> bool {
         match *self {
             TargetKind::Bin => true,
+            _ => false,
+        }
+    }
+
+    fn is_test(&self) -> bool {
+        match *self {
+            TargetKind::Test => true,
             _ => false,
         }
     }
@@ -171,6 +179,7 @@ fn target_from_json(jtarget: &Json) -> Target {
     let kind = match kinds[0].as_string().unwrap() {
         "bin" => TargetKind::Bin,
         "lib" | "dylib" | "staticlib" => TargetKind::Lib,
+        "test" => TargetKind::Test,
         _ => TargetKind::Other,
     };
 
